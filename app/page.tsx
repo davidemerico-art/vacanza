@@ -12,15 +12,8 @@ export default function Home() {
   const [mode, setMode] = useState<Mode>("select");
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "" });
   const [adminCode, setAdminCode] = useState("");
-  const [auth, setAuth] = useState<AuthState>(() => {
-    if (typeof window === "undefined") {
-      return { loggedIn: false, userType: null };
-    }
-    return {
-      loggedIn: localStorage.getItem("loggedIn") === "true",
-      userType: (localStorage.getItem("userType") as UserType) || null,
-    };
-  });
+  const [auth, setAuth] = useState<AuthState>({ loggedIn: false, userType: null });
+  const [authResolved, setAuthResolved] = useState(false);
   const [photos, setPhotos] = useState<string[]>(["https://via.placeholder.com/800x400?text=Casa+Vacanza+1"]);
   const [newPhoto, setNewPhoto] = useState("");
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -46,6 +39,14 @@ export default function Home() {
       console.error("Errore caricamento foto:", error);
     }
   };
+
+  useEffect(() => {
+    const loggedIn = localStorage.getItem("loggedIn") === "true";
+    const userType = (localStorage.getItem("userType") as UserType) || null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAuth({ loggedIn, userType });
+    setAuthResolved(true);
+  }, []);
 
   useEffect(() => {
     if (auth.loggedIn) {
@@ -144,6 +145,14 @@ export default function Home() {
     localStorage.removeItem("userName");
     setMode("select");
   };
+
+  if (!authResolved) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-xl text-gray-700 dark:text-gray-200">Caricamento...</div>
+      </div>
+    );
+  }
 
   if (!auth.loggedIn) {
     return (
