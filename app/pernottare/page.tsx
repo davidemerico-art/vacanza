@@ -8,6 +8,8 @@ interface Prenotazione {
   date: string;
   user: string;
   tipo: 'intera' | 'mezza';
+  status: string;
+  groupId: string;
 }
 
 export default function Pernottare() {
@@ -27,6 +29,9 @@ export default function Pernottare() {
     if (typeof window === 'undefined') return '';
     return localStorage.getItem('userEmail') || '';
   });
+  const [myPrenotazioni, setMyPrenotazioni] = useState<Prenotazione[]>([]);
+  const [iban, setIban] = useState("");
+  const [showIbanForGroupId, setShowIbanForGroupId] = useState<string | null>(null);
 
   const [prices, setPrices] = useState<{ priceInteraPerNight: number; priceMezzaPerNight: number }>(() => ({
     priceInteraPerNight: 100,
@@ -50,11 +55,16 @@ export default function Pernottare() {
     }
 
     const loadAll = async () => {
-      const [resBookings, resPrices] = await Promise.all([fetch('/api/bookings'), fetch('/api/settings/prices')]);
+      const [resBookings, resPrices, resIban] = await Promise.all([
+        fetch('/api/bookings'),
+        fetch('/api/settings/prices'),
+        fetch('/api/settings/iban'),
+      ]);
 
+      let bookingsData: Prenotazione[] = [];
       if (resBookings.ok) {
-        const data = await resBookings.json();
-        setPrenotazioni(data);
+        bookingsData = await resBookings.json();
+        setPrenotazioni(bookingsData);
       }
 
       if (resPrices.ok) {
@@ -63,6 +73,15 @@ export default function Pernottare() {
           priceInteraPerNight: typeof data.priceInteraPerNight === 'number' ? data.priceInteraPerNight : 100,
           priceMezzaPerNight: typeof data.priceMezzaPerNight === 'number' ? data.priceMezzaPerNight : 80,
         });
+      }
+
+      if (resIban.ok) {
+        const data = await resIban.json();
+        setIban(data.iban);
+      }
+
+      if (bookingsData.length > 0 && userEmail) {
+        setMyPrenotazioni(bookingsData.filter((p: Prenotazione) => p.userEmail === userEmail));
       }
     };
 
@@ -124,9 +143,14 @@ export default function Pernottare() {
           tipo: tipoPensione,
         })
       });
-      const result = await response.json();
+      let result: { success?: boolean; message?: string } | null = null;
+      try {
+        result = await response.json();
+      } catch {
+        result = { success: false, message: 'Errore del server durante la prenotazione.' };
+      }
       if (!response.ok) {
-        alert(result.message || 'Errore durante la prenotazione.');
+        alert(result?.message || 'Errore durante la prenotazione.');
         return;
       }
       const listResponse = await fetch('/api/bookings');
@@ -136,6 +160,12 @@ export default function Pernottare() {
       alert('Prenotazione effettuata!');
       setSelectedStartIso(null);
       setSelectedEndIso(null);
+      // Refresh my bookings
+      const myRes = await fetch('/api/bookings');
+      if (myRes.ok) {
+        const all = await myRes.json();
+        setMyPrenotazioni(all.filter((p: Prenotazione) => p.userEmail === userEmail));
+      }
     } else {
       alert('Seleziona le date.');
     }
@@ -342,7 +372,7 @@ export default function Pernottare() {
               </div>
             </div>
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3083.1234!2d18.1714!3d40.3515!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1344108b8c7c7c7c7%3A0x1234567890abcdef!2zTGVjY2UsIEl0YWxpYQ!5e0!3m2!1sit!2sit!4v1234567890!5m2!1sit!2sit"
+              src="https://www.google.com/maps/dir/Via+Vecchia+Frigole+35+Lecce/Piazza+Sant%27Oronzo+Lecce"
               width="100%"
               height="300"
               style={{ border: 0, borderRadius: "8px" }}
@@ -354,6 +384,71 @@ export default function Pernottare() {
               Il punto rosso indica “Casa Vacanza”, mentre il punto blu indica il “Centro storico” (Piazza Sant&apos;Oronzo).
             </div>
           </div>
+        </div>
+
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">Le mie prenotazioni</h2>
+          {myPrenotazioni.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow text-center text-gray-500">
+              Non hai ancora effettuato prenotazioni.
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {Object.values(myPrenotazioni.reduce((acc: any, p) => {
+                if (!acc[p.groupId]) acc[p.groupId] = { ...p, dates: [] };
+                acc[p.groupId].dates.push(p.date);
+                return acc;
+              }, {})).map((booking: any) => (
+                <div key={booking.groupId} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <div className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                      {booking.dates[0]} al {booking.dates[booking.dates.length - 1]}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      Tipo: {booking.tipo} | Stato: <span className={`font-bold ${
+                        booking.status === 'CONFIRMED' ? 'text-green-600' : 
+                        booking.status === 'PAID_WAITING' ? 'text-blue-600' : 'text-orange-600'
+                      }`}>{booking.status}</span>
+                    </div>
+                  </div>
+                  
+                  {booking.status === 'PENDING' && (
+                    <div className="flex flex-col gap-2 w-full md:w-auto">
+                      <button
+                        onClick={() => setShowIbanForGroupId(showIbanForGroupId === booking.groupId ? null : booking.groupId)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Paga e conferma
+                      </button>
+                      
+                      {showIbanForGroupId === booking.groupId && (
+                        <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200">
+                          <p className="text-sm font-medium mb-2">IBAN per il pagamento:</p>
+                          <p className="font-mono text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 p-2 rounded border">{iban || "Caricamento..."}</p>
+                          <button
+                            onClick={async () => {
+                              const res = await fetch('/api/bookings/status', {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ groupId: booking.groupId, status: 'PAID_WAITING' })
+                              });
+                              if (res.ok) {
+                                alert("Segnalazione inviata! L'admin confermerà a breve.");
+                                window.location.reload();
+                              }
+                            }}
+                            className="mt-3 w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-bold"
+                          >
+                            HO PAGATO CON IBAN
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 const PRICE_INTERA_KEY = "priceInteraPerNight";
 const PRICE_MEZZA_KEY = "priceMezzaPerNight";

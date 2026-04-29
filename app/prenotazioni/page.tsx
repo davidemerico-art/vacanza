@@ -8,6 +8,8 @@ interface Prenotazione {
   date: string;
   user: string;
   tipo: 'intera' | 'mezza';
+  status: string;
+  groupId: string;
 }
 
 export default function Prenotazioni() {
@@ -18,6 +20,7 @@ export default function Prenotazioni() {
   });
   const [priceInteraPerNight, setPriceInteraPerNight] = useState<number>(100);
   const [priceMezzaPerNight, setPriceMezzaPerNight] = useState<number>(80);
+  const [iban, setIban] = useState("");
 
   const bookingsByDate = prenotazioni.reduce<Record<string, BookingByDate>>((acc, p) => {
     acc[p.date] = { user: p.user, tipo: p.tipo };
@@ -53,6 +56,12 @@ export default function Prenotazioni() {
         setPriceInteraPerNight(typeof data.priceInteraPerNight === 'number' ? data.priceInteraPerNight : 100);
         setPriceMezzaPerNight(typeof data.priceMezzaPerNight === 'number' ? data.priceMezzaPerNight : 80);
       }
+
+      const resIban = await fetch('/api/settings/iban');
+      if (resIban.ok) {
+        const data = await resIban.json();
+        setIban(data.iban);
+      }
     };
 
     loadAll();
@@ -72,6 +81,27 @@ export default function Prenotazioni() {
     }
 
     alert('Prezzi aggiornati!');
+  };
+
+  const handleSaveIban = async () => {
+    const res = await fetch('/api/settings/iban', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ iban }),
+    });
+    if (res.ok) alert('IBAN salvato!');
+  };
+
+  const handleConfirmBooking = async (groupId: string) => {
+    const res = await fetch('/api/bookings/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId, status: 'CONFIRMED' }),
+    });
+    if (res.ok) {
+      alert('Prenotazione confermata!');
+      window.location.reload();
+    }
   };
 
   const handleDeletePrenotazione = async (id: number) => {
@@ -161,6 +191,28 @@ export default function Prenotazioni() {
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Impostazioni Pagamento</h2>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Il tuo IBAN (per i pagamenti degli utenti)
+              </label>
+              <input
+                type="text"
+                value={iban}
+                onChange={(e) => setIban(e.target.value)}
+                placeholder="Inserisci IBAN..."
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono"
+              />
+            </div>
+            <button
+              onClick={handleSaveIban}
+              className="mt-4 w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Salva IBAN
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
             <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Calendario Prenotazioni</h2>
             <div className="flex items-center gap-4 text-sm mb-3">
               <div className="flex items-center gap-2">
@@ -176,24 +228,54 @@ export default function Prenotazioni() {
             {prenotazioni.length === 0 ? (
               <p className="text-gray-600 dark:text-gray-400">Nessuna prenotazione.</p>
             ) : (
-              <ul className="space-y-2">
-                {prenotazioni.map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+              <div className="space-y-4">
+                {Object.values(prenotazioni.reduce((acc: any, p) => {
+                  if (!acc[p.groupId]) acc[p.groupId] = { ...p, dates: [] };
+                  acc[p.groupId].dates.push(p.date);
+                  return acc;
+                }, {})).map((booking: any) => (
+                  <div
+                    key={booking.groupId}
+                    className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg gap-4"
                   >
                     <div>
-                      <span className="font-medium text-gray-800 dark:text-gray-200">{p.date}</span> - {p.user} ({p.tipo})
+                      <div className="font-medium text-gray-800 dark:text-gray-200">
+                        {booking.dates[0]} - {booking.dates[booking.dates.length - 1]}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Utente: {booking.user} | Tipo: {booking.tipo} | Stato: <span className={`font-bold ${
+                          booking.status === 'CONFIRMED' ? 'text-green-600' : 
+                          booking.status === 'PAID_WAITING' ? 'text-blue-600' : 'text-orange-600'
+                        }`}>{booking.status}</span>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => handleDeletePrenotazione(p.id)}
-                      className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                    >
-                      Elimina
-                    </button>
-                  </li>
+                    <div className="flex gap-2 w-full md:w-auto">
+                      {booking.status === 'PAID_WAITING' && (
+                        <button
+                          onClick={() => handleConfirmBooking(booking.groupId)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-bold"
+                        >
+                          CONFERMA PAGAMENTO
+                        </button>
+                      )}
+                      <button
+                        onClick={async () => {
+                          if (confirm("Eliminare tutte le date di questa prenotazione?")) {
+                            for (const date of booking.dates) {
+                              const p = prenotazioni.find(pr => pr.groupId === booking.groupId && pr.date === date);
+                              if (p) await fetch(`/api/bookings/${p.id}`, { method: "DELETE" });
+                            }
+                            window.location.reload();
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
+                      >
+                        Elimina
+                      </button>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         </div>

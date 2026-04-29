@@ -20,10 +20,13 @@ model User {
 }
 
 model Prenotazione {
-  id     Int    @id @default(autoincrement())
-  date   String
-  user   String
-  tipo   String // 'intera' o 'mezza'
+  id        Int    @id @default(autoincrement())
+  date      String
+  user      String
+  userEmail String @default("")
+  tipo      String // 'intera' o 'mezza'
+  status    String @default("PENDING") // PENDING, PAID_WAITING, CONFIRMED
+  groupId   String @default("")
 
   @@map("prenotazioni")
 }

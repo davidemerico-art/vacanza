@@ -74,6 +74,14 @@ export default function MessaggiPage() {
     loadMessages();
   };
 
+  const handleDeleteMessage = async (id: number) => {
+    if (!confirm("Sei sicuro di voler eliminare questo messaggio?")) return;
+    const res = await fetch(`/api/messages/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      loadMessages();
+    }
+  };
+
   const handleSavePhone = async () => {
     if (userType !== "admin") return;
     const res = await fetch("/api/settings/admin-phone", {
@@ -153,16 +161,27 @@ export default function MessaggiPage() {
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`p-3 rounded-lg ${
+              className={`p-3 rounded-lg relative group ${
                 message.senderType === "admin"
                   ? "bg-green-100 dark:bg-green-900/40"
                   : "bg-blue-100 dark:bg-blue-900/40"
               }`}
             >
-              <p className="font-semibold text-gray-800 dark:text-gray-100">
-                {message.senderName} ({message.senderType})
-              </p>
-              <p className="text-gray-700 dark:text-gray-200">{message.content}</p>
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-semibold text-gray-800 dark:text-gray-100">
+                    {message.senderName} ({message.senderType})
+                  </p>
+                  <p className="text-gray-700 dark:text-gray-200">{message.content}</p>
+                </div>
+                <button
+                  onClick={() => handleDeleteMessage(message.id)}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-50 text-xs rounded transition-all"
+                  title="Elimina messaggio"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           ))}
         </div>
