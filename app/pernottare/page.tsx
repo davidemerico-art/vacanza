@@ -372,7 +372,7 @@ export default function Pernottare() {
               </div>
             </div>
             <iframe
-              src="https://www.google.com/maps/dir/Via+Vecchia+Frigole+35+Lecce/Piazza+Sant%27Oronzo+Lecce"
+              src="https://www.google.com/maps?q=Via+Vecchia+Frigole+35+Lecce&output=embed"
               width="100%"
               height="300"
               style={{ border: 0, borderRadius: "8px" }}
@@ -380,8 +380,16 @@ export default function Pernottare() {
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
             />
-            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-              Il punto rosso indica “Casa Vacanza”, mentre il punto blu indica il “Centro storico” (Piazza Sant&apos;Oronzo).
+            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400 space-y-2">
+              <div>Visualizza il punto di partenza sulla mappa qui sopra.</div>
+              <a
+                href="https://www.google.com/maps/dir/?api=1&origin=Via+Vecchia+Frigole+35+Lecce&destination=Piazza+Sant%27Oronzo+Lecce"
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Apri indicazioni da Via Vecchia Frigole 35 a Piazza Sant&apos;Oronzo
+              </a>
             </div>
           </div>
         </div>
