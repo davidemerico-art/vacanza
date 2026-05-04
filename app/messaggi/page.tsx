@@ -1,16 +1,25 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { useTranslation } from "@/lib/useTranslation";
 
 type Message = {
   id: number;
   senderType: "user" | "admin";
   senderName: string;
+  userEmail: string | null;
   content: string;
   createdAt: string;
 };
 
+type UserItem = {
+  id: number;
+  name: string;
+  email: string;
+};
+
 export default function MessaggiPage() {
+  const { t } = useTranslation();
   const userType = useSyncExternalStore(
     () => () => {},
     () => {
@@ -28,13 +37,37 @@ export default function MessaggiPage() {
     },
     () => ""
   );
+  const userEmail = useSyncExternalStore(
+    () => () => {},
+    () => localStorage.getItem("userEmail") || "",
+    () => ""
+  );
+
   const [messages, setMessages] = useState<Message[]>([]);
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [selectedUserEmail, setSelectedUserEmail] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [adminPhone, setAdminPhone] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
 
-  const loadMessages = async () => {
-    const res = await fetch("/api/messages");
+  const loadUsers = async () => {
+    const res = await fetch("/api/users");
+    if (!res.ok) return;
+    const data = await res.json();
+    setUsers(data);
+    if (!selectedUserEmail && data.length > 0) {
+      setSelectedUserEmail(data[0].email);
+    }
+  };
+
+  const loadMessages = async (email?: string) => {
+    const conversationEmail = email || (userType === "user" ? userEmail : selectedUserEmail);
+    if (!conversationEmail) {
+      setMessages([]);
+      return;
+    }
+
+    const res = await fetch(`/api/messages?userEmail=${encodeURIComponent(conversationEmail)}`);
     if (!res.ok) return;
     const data = await res.json();
     setMessages(data);
@@ -51,13 +84,28 @@ export default function MessaggiPage() {
   useEffect(() => {
     if (!userType) return;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadMessages();
     loadAdminPhone();
-  }, [userType]);
+    if (userType === "admin") {
+      loadUsers();
+    } else {
+      loadMessages(userEmail);
+    }
+  }, [userType, userEmail]);
+
+  useEffect(() => {
+    if (userType === "admin" && selectedUserEmail) {
+      loadMessages(selectedUserEmail);
+    }
+  }, [selectedUserEmail, userType]);
 
   const handleSend = async () => {
     if (!userType || !newMessage.trim()) return;
+
+    const conversationEmail = userType === "admin" ? selectedUserEmail : userEmail;
+    if (!conversationEmail) {
+      alert(t("messaggi.selectUserPrompt"));
+      return;
+    }
 
     const res = await fetch("/api/messages", {
       method: "POST",
@@ -66,19 +114,24 @@ export default function MessaggiPage() {
         senderType: userType,
         senderName,
         content: newMessage,
+        userEmail: conversationEmail,
       }),
     });
 
     if (!res.ok) return;
     setNewMessage("");
-    loadMessages();
+    loadMessages(conversationEmail);
   };
 
   const handleDeleteMessage = async (id: number) => {
-    if (!confirm("Sei sicuro di voler eliminare questo messaggio?")) return;
+    if (!confirm(t("messaggi.deleteConfirm"))) return;
     const res = await fetch(`/api/messages/${id}`, { method: "DELETE" });
     if (res.ok) {
-      loadMessages();
+      if (userType === "admin") {
+        loadMessages(selectedUserEmail);
+      } else {
+        loadMessages(userEmail);
+      }
     }
   };
 
@@ -93,19 +146,21 @@ export default function MessaggiPage() {
     setAdminPhone(phoneInput.trim());
   };
 
+  const selectedUser = users.find((user) => user.email === selectedUserEmail);
+
   if (!userType) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900 flex items-center justify-center" suppressHydrationWarning>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg max-w-md w-full text-center">
-          <div className="text-xl font-semibold mb-2">Accesso richiesto</div>
+          <div className="text-xl font-semibold mb-2">{t("messaggi.accessRequired")}</div>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Devi fare login prima di usare i messaggi.
+            {t("messaggi.loginRequired")}
           </p>
           <button
             onClick={() => (window.location.href = "/")}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Vai al login
+            {t("messaggi.backHome")}
           </button>
         </div>
       </div>
@@ -113,49 +168,82 @@ export default function MessaggiPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900" suppressHydrationWarning>
       <header className="bg-white dark:bg-gray-800 shadow-lg">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">Messaggi</h1>
+          <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">{t("messaggi.title")}</h1>
           <button
             onClick={() => (window.location.href = "/")}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Home
+            {t("common.home")}
           </button>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
         {userType === "admin" ? (
-          <div className="mb-4 bg-white dark:bg-gray-800 rounded-xl shadow p-4">
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Numero telefono visibile agli utenti</p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={phoneInput}
-                onChange={(e) => setPhoneInput(e.target.value)}
-                placeholder="Es. +39 333 1234567"
-                className="flex-1 p-3 border border-gray-300 rounded-lg"
-              />
-              <button
-                onClick={handleSavePhone}
-                className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                Salva numero
-              </button>
+          <div className="mb-4 bg-white dark:bg-gray-800 rounded-xl shadow p-4 space-y-4">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{t("messaggi.adminPhone")}</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  placeholder="Es. +39 333 1234567"
+                  className="flex-1 p-3 border border-gray-300 rounded-lg"
+                />
+                <button
+                  onClick={handleSavePhone}
+                  className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  {t("messaggi.save")}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                {t("messaggi.selectUser")}
+              </p>
+              {users.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {t("messaggi.noUsers")}
+                </p>
+              ) : (
+                <select
+                  value={selectedUserEmail}
+                  onChange={(e) => setSelectedUserEmail(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-white dark:bg-gray-800"
+                >
+                  {users.map((user) => (
+                    <option key={user.id} value={user.email}>
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
         ) : (
           <div className="mb-4 bg-white dark:bg-gray-800 rounded-xl shadow p-4">
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              Telefono admin:{" "}
+              {t("messaggi.adminPhone")}: {" "}
               <span className="font-semibold text-blue-700 dark:text-blue-300">
-                {adminPhone || "Non ancora disponibile"}
+                {adminPhone || t("messaggi.phoneNumber")}
               </span>
             </p>
           </div>
         )}
+
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            {userType === "admin"
+              ? `${t("messaggi.conversationWith")} ${selectedUser?.name || selectedUserEmail || t("messaggi.selectUser")}`
+              : t("messaggi.conversationWithAdmin")}
+          </h2>
+        </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 h-[60vh] overflow-y-auto space-y-3">
           {messages.map((message) => (
@@ -177,7 +265,7 @@ export default function MessaggiPage() {
                 <button
                   onClick={() => handleDeleteMessage(message.id)}
                   className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-50 text-xs rounded transition-all"
-                  title="Elimina messaggio"
+                  title={t("messaggi.deleteMessage")}
                 >
                   ✕
                 </button>
@@ -191,14 +279,14 @@ export default function MessaggiPage() {
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Scrivi un messaggio..."
+            placeholder={t("messaggi.messagePlaceholder")}
             className="flex-1 p-3 border border-gray-300 rounded-lg"
           />
           <button
             onClick={handleSend}
             className="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Invia
+            {t("messaggi.sendMessage")}
           </button>
         </div>
       </main>

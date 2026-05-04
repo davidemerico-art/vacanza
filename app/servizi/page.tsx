@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "@/lib/useTranslation";
 
 interface Servizio {
   id: number;
@@ -11,6 +12,7 @@ interface Servizio {
 }
 
 export default function Servizi() {
+  const { t } = useTranslation();
   const [servizi, setServizi] = useState<Servizio[]>([]);
   const [userType] = useState<'user' | 'admin' | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -62,10 +64,10 @@ export default function Servizi() {
     setServizi(data);
   };
 
-  if (!userType) return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900 flex items-center justify-center"><div className="text-xl">Caricamento...</div></div>;
+  if (!userType) return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900 flex items-center justify-center"><div className="text-xl">{t("common.loading")}</div></div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900" suppressHydrationWarning>
       <header className="bg-white dark:bg-gray-800 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -77,13 +79,13 @@ export default function Servizi() {
               onClick={() => window.location.href = '/'}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Home
+              {t("pernottare.home")}
             </button>
             <button
               onClick={() => (window.location.href = "/messaggi")}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              Messaggi
+              {t("pernottare.messages")}
             </button>
           </div>
         </div>
@@ -91,28 +93,28 @@ export default function Servizi() {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-semibold text-center mb-8 text-gray-800 dark:text-gray-200">
-          I Nostri Servizi
+          {t("servizi.services")}
         </h1>
 
         {userType === 'admin' && (
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8 max-w-md mx-auto">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Aggiungi Servizio</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("servizi.addService")}</h2>
             <input
               type="text"
-              placeholder="Nome servizio"
+              placeholder={t("servizi.serviceName")}
               value={newServizio.nome}
               onChange={(e) => setNewServizio({ ...newServizio, nome: e.target.value })}
               className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <textarea
-              placeholder="Descrizione"
+              placeholder={t("servizi.description")}
               value={newServizio.descrizione}
               onChange={(e) => setNewServizio({ ...newServizio, descrizione: e.target.value })}
               className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <input
               type="text"
-              placeholder="URL immagine"
+              placeholder={t("servizi.imageUrl")}
               value={newServizio.immagine}
               onChange={(e) => setNewServizio({ ...newServizio, immagine: e.target.value })}
               className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -124,13 +126,13 @@ export default function Servizi() {
                 onChange={(e) => setNewServizio({ ...newServizio, incluso: e.target.checked })}
                 className="mr-2"
               />
-              Incluso nel prezzo
+              {t("servizi.includedPrice")}
             </label>
             <button
               onClick={handleAddServizio}
               className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
             >
-              Aggiungi
+              {t("servizi.add")}
             </button>
           </div>
         )}
@@ -142,12 +144,13 @@ export default function Servizi() {
               <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-200">{servizio.nome}</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-2">{servizio.descrizione}</p>
               <p className={`text-sm font-medium ${servizio.incluso ? 'text-green-600' : 'text-red-600'}`}>
-                {servizio.incluso ? '✓ Incluso' : '€ A pagamento'}
+                {servizio.incluso ? t("servizi.included") : t("servizi.payable")}
               </p>
               {userType === 'admin' && (
                 <button
                   onClick={() => handleDeleteServizio(servizio.id)}
                   className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  title={t("servizi.delete")}
                 >
                   Elimina
                 </button>

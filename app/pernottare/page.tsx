@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import BookingCalendar, { type BookingByDate } from "../components/booking-calendar";
+import { useTranslation } from "@/lib/useTranslation";
 
 interface Prenotazione {
   id: number;
@@ -13,6 +14,7 @@ interface Prenotazione {
 }
 
 export default function Pernottare() {
+  const { t } = useTranslation();
   const [userType, setUserType] = useState<'user' | 'admin' | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
   const [tipoPensione, setTipoPensione] = useState<'intera' | 'mezza'>('intera');
@@ -123,12 +125,12 @@ export default function Pernottare() {
       const dates = getIsoRangeDays(selectedStartIso, selectedEndIso);
       const conflict = dates.some((date) => isDateBooked(date));
       if (conflict) {
-        alert("Alcune date sono già prenotate. Riprova selezionando un intervallo libero.");
+        alert(t("pernottare.conflictDatesError"));
         return;
       }
 
       if (adulti + bambini < 1) {
-        alert("Inserisci almeno 1 ospite (adulti o bambini).");
+        alert(t("pernottare.guestsRequired"));
         return;
       }
 
@@ -147,17 +149,17 @@ export default function Pernottare() {
       try {
         result = await response.json();
       } catch {
-        result = { success: false, message: 'Errore del server durante la prenotazione.' };
+        result = { success: false, message: t("pernottare.errorBooking") };
       }
       if (!response.ok) {
-        alert(result?.message || 'Errore durante la prenotazione.');
+        alert(result?.message || t("pernottare.errorBooking"));
         return;
       }
       const listResponse = await fetch('/api/bookings');
       if (listResponse.ok) {
         setPrenotazioni(await listResponse.json());
       }
-      alert('Prenotazione effettuata!');
+      alert(t("pernottare.bookingCreated"));
       setSelectedStartIso(null);
       setSelectedEndIso(null);
       // Refresh my bookings
@@ -167,14 +169,14 @@ export default function Pernottare() {
         setMyPrenotazioni(all.filter((p: Prenotazione) => p.userEmail === userEmail));
       }
     } else {
-      alert('Seleziona le date.');
+      alert(t("pernottare.selectDatesError"));
     }
   };
 
   if (!authResolved) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-xl">Caricamento...</div>
+        <div className="text-xl">{t("common.loading")}</div>
       </div>
     );
   }
@@ -186,7 +188,7 @@ export default function Pernottare() {
   const totalCost = selectedNightsCount ? selectedNightsCount * nightlyGuestsTotal : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900" suppressHydrationWarning>
       <header className="bg-white dark:bg-gray-800 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -198,34 +200,34 @@ export default function Pernottare() {
               onClick={() => window.location.href = '/'}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Home
+              {t("common.home")}
             </button>
             <button
               onClick={() => (window.location.href = "/messaggi")}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              Messaggi
+              {t("common.messages")}
             </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-semibold text-center mb-8 text-gray-800 dark:text-gray-200">Prenota il tuo Soggiorno</h1>
+        <h1 className="text-3xl font-semibold text-center mb-8 text-gray-800 dark:text-gray-200">{t("pernottare.bookingTitle")}</h1>
 
         <div className="grid lg:grid-cols-2 gap-8">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
             <div className="flex items-start justify-between gap-6 mb-4">
               <div className="flex flex-col gap-2">
-                <div className="text-xl font-semibold text-gray-800 dark:text-gray-200">Seleziona le date</div>
+                <div className="text-xl font-semibold text-gray-800 dark:text-gray-200">{t("pernottare.selectDates")}</div>
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="inline-block w-3 h-3 rounded-full bg-red-500" />
-                    <span>Già prenotato</span>
+                    <span>{t("pernottare.alreadyBooked")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="inline-block w-3 h-3 rounded-full bg-emerald-200" />
-                    <span>Selezione</span>
+                    <span>{t("pernottare.selection")}</span>
                   </div>
                 </div>
               </div>
@@ -238,7 +240,7 @@ export default function Pernottare() {
                   }}
                   className="px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
                 >
-                  Pulisci
+                  {t("pernottare.clean")}
                 </button>
               )}
             </div>
@@ -288,7 +290,7 @@ export default function Pernottare() {
             <div className="mt-6 grid gap-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Adulti</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">{t("pernottare.adults")}</label>
                   <input
                     type="number"
                     min={0}
@@ -298,7 +300,7 @@ export default function Pernottare() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Bambini (0-14 anni)</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">{t("pernottare.children")}</label>
                   <input
                     type="number"
                     min={0}
@@ -310,14 +312,14 @@ export default function Pernottare() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Tipo di Pensione</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">{t("pernottare.bookingType")}</label>
                 <select
                   value={tipoPensione}
                   onChange={(e) => setTipoPensione(e.target.value as "intera" | "mezza")}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="intera">Pensione Intera</option>
-                  <option value="mezza">Mezza Pensione</option>
+                  <option value="intera">{t("pernottare.fullBoard")}</option>
+                  <option value="mezza">{t("pernottare.halfBoard")}</option>
                 </select>
               </div>
 
@@ -325,26 +327,26 @@ export default function Pernottare() {
                 <div className="text-sm text-gray-700 dark:text-gray-200">
                   {selectedStartIso && selectedEndIso ? (
                     <>
-                      <div className="font-semibold mb-1">Riepilogo</div>
-                      <div>Check-in: <span className="font-medium">{selectedStartIso}</span></div>
-                      <div>Check-out: <span className="font-medium">{selectedEndIso}</span></div>
-                      <div>Notti: <span className="font-medium">{selectedNightsCount}</span></div>
-                      <div>Ospiti: <span className="font-medium">{adulti} adulti</span>, <span className="font-medium">{bambini} bambini</span></div>
+                      <div className="font-semibold mb-1">{t("pernottare.summary")}</div>
+                      <div>{t("pernottare.checkIn")}: <span className="font-medium">{selectedStartIso}</span></div>
+                      <div>{t("pernottare.checkOut")}: <span className="font-medium">{selectedEndIso}</span></div>
+                      <div>{t("pernottare.nights")}: <span className="font-medium">{selectedNightsCount}</span></div>
+                      <div>{t("pernottare.guests")}: <span className="font-medium">{adulti} {adulti === 1 ? t("pernottare.adults") : "adults"}</span>, <span className="font-medium">{bambini} {bambini === 1 ? "bambino" : "bambini"}</span></div>
                       <div className="text-[12px] text-gray-600 dark:text-gray-400 mt-1">
-                        I bambini pagano la meta del prezzo.
+                        {t("pernottare.childrenHalfPrice")}
                       </div>
                       <div className="mt-2">
-                        Totale:{" "}
+                        {t("pernottare.totalPrice")}: {" "}
                         <span className="font-bold text-green-700 dark:text-green-300">
                           €{totalCost?.toFixed(2)}
                         </span>
                       </div>
                       <div className="text-[12px] text-gray-600 dark:text-gray-400 mt-1">
-                        Prezzo per notte: €{pricePerNight} per adulto, €{(pricePerNight / 2).toFixed(2)} per bambino
+                        {t("pernottare.pricePerNight")}: €{pricePerNight} per {t("pernottare.adults")}, €{(pricePerNight / 2).toFixed(2)} per {t("pernottare.children").toLowerCase()}
                       </div>
                     </>
                   ) : (
-                    <div className="text-gray-600 dark:text-gray-400">Seleziona almeno due date nel calendario per vedere il costo totale.</div>
+                    <div className="text-gray-600 dark:text-gray-400">{t("pernottare.selectDatesForTotal")}</div>
                   )}
                 </div>
               </div>
@@ -354,21 +356,21 @@ export default function Pernottare() {
                 disabled={!selectedStartIso || !selectedEndIso}
                 className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Prenota
+                {t("pernottare.confirmBooking")}
               </button>
             </div>
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Mappa</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("pernottare.map")}</h2>
             <div className="flex items-center gap-4 text-sm mb-3">
               <div className="flex items-center gap-2">
                 <span className="inline-block w-3 h-3 rounded-full bg-red-500" />
-                <span>Casa: Via Vecchia Frigole 35</span>
+                <span>{t("pernottare.mapHome")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="inline-block w-3 h-3 rounded-full bg-blue-500" />
-                <span>Centro: Piazza Sant&apos;Oronzo</span>
+                <span>{t("pernottare.mapCenter")}</span>
               </div>
             </div>
             <iframe
@@ -381,24 +383,24 @@ export default function Pernottare() {
               referrerPolicy="no-referrer-when-downgrade"
             />
             <div className="mt-4 text-sm text-gray-600 dark:text-gray-400 space-y-2">
-              <div>Visualizza il punto di partenza sulla mappa qui sopra.</div>
+              <div>{t("pernottare.mapDescription")}</div>
               <a
                 href="https://www.google.com/maps/dir/?api=1&origin=Via+Vecchia+Frigole+35+Lecce&destination=Piazza+Sant%27Oronzo+Lecce"
                 target="_blank"
                 rel="noreferrer"
                 className="text-blue-600 hover:underline"
               >
-                Apri indicazioni da Via Vecchia Frigole 35 a Piazza Sant&apos;Oronzo
+                {t("pernottare.mapDirections")}
               </a>
             </div>
           </div>
         </div>
 
         <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">Le mie prenotazioni</h2>
+          <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">{t("pernottare.myBookings")}</h2>
           {myPrenotazioni.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow text-center text-gray-500">
-              Non hai ancora effettuato prenotazioni.
+              {t("pernottare.noBookings")}
             </div>
           ) : (
             <div className="grid gap-4">
@@ -413,10 +415,13 @@ export default function Pernottare() {
                       {booking.dates[0]} al {booking.dates[booking.dates.length - 1]}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      Tipo: {booking.tipo} | Stato: <span className={`font-bold ${
+                      {t("pernottare.type")}: {booking.tipo === "intera" ? t("pernottare.fullBoard") : t("pernottare.halfBoard")} | {t("pernottare.status")}: <span className={`font-bold ${
                         booking.status === 'CONFIRMED' ? 'text-green-600' : 
                         booking.status === 'PAID_WAITING' ? 'text-blue-600' : 'text-orange-600'
-                      }`}>{booking.status}</span>
+                      }`}>{
+                        booking.status === 'CONFIRMED' ? t("pernottare.confirmed") :
+                        booking.status === 'PAID_WAITING' ? t("pernottare.paid_waiting") : t("pernottare.pending")
+                      }</span>
                     </div>
                   </div>
                   
@@ -426,13 +431,13 @@ export default function Pernottare() {
                         onClick={() => setShowIbanForGroupId(showIbanForGroupId === booking.groupId ? null : booking.groupId)}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                       >
-                        Paga e conferma
+                        {t("pernottare.pay")}
                       </button>
                       
                       {showIbanForGroupId === booking.groupId && (
                         <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200">
-                          <p className="text-sm font-medium mb-2">IBAN per il pagamento:</p>
-                          <p className="font-mono text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 p-2 rounded border">{iban || "Caricamento..."}</p>
+                          <p className="text-sm font-medium mb-2">{t("pernottare.ibanPayment")}</p>
+                          <p className="font-mono text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 p-2 rounded border">{iban || t("common.loading")}</p>
                           <button
                             onClick={async () => {
                               const res = await fetch('/api/bookings/status', {
@@ -441,13 +446,13 @@ export default function Pernottare() {
                                 body: JSON.stringify({ groupId: booking.groupId, status: 'PAID_WAITING' })
                               });
                               if (res.ok) {
-                                alert("Segnalazione inviata! L'admin confermerà a breve.");
+                                alert(t("pernottare.ibanConfirmMessage"));
                                 window.location.reload();
                               }
                             }}
                             className="mt-3 w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-bold"
                           >
-                            HO PAGATO CON IBAN
+                            {t("pernottare.ibanConfirm")}
                           </button>
                         </div>
                       )}

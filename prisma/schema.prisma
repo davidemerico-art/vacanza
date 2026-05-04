@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -23,16 +20,16 @@ model Prenotazione {
   id        Int    @id @default(autoincrement())
   date      String
   user      String
-  userEmail String @default("")
-  tipo      String // 'intera' o 'mezza'
-  status    String @default("PENDING") // PENDING, PAID_WAITING, CONFIRMED
+  tipo      String
   groupId   String @default("")
+  status    String @default("PENDING")
+  userEmail String @default("")
 
   @@map("prenotazioni")
 }
 
 model Servizio {
-  id          Int    @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   nome        String
   descrizione String
   immagine    String
@@ -60,6 +57,7 @@ model Message {
   id         Int      @id @default(autoincrement())
   senderType String
   senderName String
+  userEmail  String?
   content    String
   createdAt  DateTime @default(now())
 

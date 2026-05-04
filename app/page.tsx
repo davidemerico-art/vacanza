@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "@/lib/useTranslation";
 
 type UserType = "user" | "admin" | null;
 type AuthState = { loggedIn: boolean; userType: UserType };
@@ -9,6 +10,7 @@ type PhotoItem = { url: string };
 type Mode = "select" | "user-login" | "user-register" | "admin-login";
 
 export default function Home() {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>("select");
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "" });
   const [adminCode, setAdminCode] = useState("");
@@ -65,7 +67,7 @@ export default function Home() {
 
   const handleUserRegister = async () => {
     if (!userForm.name || !userForm.email || !userForm.password) {
-      alert("Compila tutti i campi.");
+      alert(t("home.errorFields"));
       return;
     }
 
@@ -77,17 +79,17 @@ export default function Home() {
     const result = await response.json();
 
     if (result.success) {
-      alert("Registrazione completata! Ora puoi accedere.");
+      alert(t("home.successRegister"));
       setMode("user-login");
       setUserForm({ name: "", email: "", password: "" });
     } else {
-      alert(result.message || "Errore durante la registrazione.");
+      alert(result.message || t("home.errorRegister"));
     }
   };
 
   const handleUserLogin = async () => {
     if (!userForm.email || !userForm.password) {
-      alert("Compila tutti i campi.");
+      alert(t("home.errorFields"));
       return;
     }
 
@@ -103,7 +105,7 @@ export default function Home() {
       setMode("select");
       fetchPhotos();
     } else {
-      alert(result.message || "Credenziali errate.");
+      alert(result.message || t("home.errorLogin"));
     }
   };
 
@@ -112,13 +114,13 @@ export default function Home() {
       saveLogin("admin", "", "Admin");
       fetchPhotos();
     } else {
-      alert("Codice admin errato.");
+      alert(t("home.errorAdminCode"));
     }
   };
 
   const handleAddPhoto = async () => {
     if (!newPhoto.trim()) {
-      alert("Inserisci l'URL dell'immagine.");
+      alert(t("home.errorPhotoUrl"));
       return;
     }
 
@@ -133,7 +135,7 @@ export default function Home() {
       setNewPhoto("");
       fetchPhotos();
     } else {
-      alert(result.message || "Errore durante il salvataggio della foto.");
+      alert(result.message || t("home.errorSavePhoto"));
     }
   };
 
@@ -149,38 +151,38 @@ export default function Home() {
   if (!authResolved) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-xl text-gray-700 dark:text-gray-200">Caricamento...</div>
+        <div className="text-xl text-gray-700 dark:text-gray-200">{t("home.loadingAuth")}</div>
       </div>
     );
   }
 
   if (!auth.loggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900 font-sans">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900 font-sans" suppressHydrationWarning>
         <div className="flex flex-col items-center justify-center min-h-screen">
           <div className="text-center mb-8">
             <img src="/logopng.png" alt="Casa Vacanza" className="w-20 h-20 mx-auto mb-4" />
-            <h1 className="text-4xl font-bold text-blue-600 dark:text-blue-400">Casa Vacanza</h1>
-            <p className="text-gray-600 dark:text-gray-400">Il tuo rifugio perfetto a Lecce</p>
+            <h1 className="text-4xl font-bold text-blue-600 dark:text-blue-400">{t("home.heading")}</h1>
+            <p className="text-gray-600 dark:text-gray-400">{t("home.tagline")}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700">
             {mode === "select" && (
               <>
                 <h1 className="text-2xl font-semibold text-center mb-6 text-gray-800 dark:text-gray-200">
-                  Accedi al tuo account
+                  {t("home.selectAccount")}
                 </h1>
                 <div className="space-y-4">
                   <button
                     onClick={() => setMode("user-login")}
                     className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                   >
-                    Accedi come Utente
+                    {t("home.userOption")}
                   </button>
                   <button
                     onClick={() => setMode("admin-login")}
                     className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
                   >
-                    Accedi come Admin
+                    {t("home.adminOption")}
                   </button>
                 </div>
               </>
@@ -188,17 +190,17 @@ export default function Home() {
 
             {mode === "user-login" && (
               <>
-                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Login Utente</h2>
+                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.userLoginTitle")}</h2>
                 <input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t("home.email")}
                   value={userForm.email}
                   onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                   className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <input
                   type="password"
-                  placeholder="Password"
+                  placeholder={t("home.password")}
                   value={userForm.password}
                   onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                   className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -207,43 +209,43 @@ export default function Home() {
                   onClick={handleUserLogin}
                   className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mb-3 font-medium"
                 >
-                  Accedi
+                  {t("home.login")}
                 </button>
                 <button
                   onClick={() => setMode("user-register")}
                   className="w-full py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                 >
-                  Registrati
+                  {t("home.register")}
                 </button>
                 <button
                   onClick={() => setMode("select")}
                   className="w-full py-3 mt-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
                 >
-                  Indietro
+                  {t("home.backButton")}
                 </button>
               </>
             )}
 
             {mode === "user-register" && (
               <>
-                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Registrazione Utente</h2>
+                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.userRegisterTitle")}</h2>
                 <input
                   type="text"
-                  placeholder="Nome"
+                  placeholder={t("home.name")}
                   value={userForm.name}
                   onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
                   className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t("home.email")}
                   value={userForm.email}
                   onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                   className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <input
                   type="password"
-                  placeholder="Password"
+                  placeholder={t("home.password")}
                   value={userForm.password}
                   onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                   className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -252,23 +254,23 @@ export default function Home() {
                   onClick={handleUserRegister}
                   className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mb-3 font-medium"
                 >
-                  Registrati
+                  {t("home.register")}
                 </button>
                 <button
                   onClick={() => setMode("user-login")}
                   className="w-full py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
                 >
-                  Torna al Login
+                  {t("home.backToLogin")}
                 </button>
               </>
             )}
 
             {mode === "admin-login" && (
               <>
-                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Login Admin</h2>
+                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.adminLoginTitle")}</h2>
                 <input
                   type="text"
-                  placeholder="Codice Admin"
+                  placeholder={t("home.adminCode")}
                   value={adminCode}
                   onChange={(e) => setAdminCode(e.target.value)}
                   className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -277,13 +279,13 @@ export default function Home() {
                   onClick={handleAdminLogin}
                   className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mb-3 font-medium"
                 >
-                  Accedi
+                  {t("home.login")}
                 </button>
                 <button
                   onClick={() => setMode("select")}
                   className="w-full py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
                 >
-                  Indietro
+                  {t("home.backButton")}
                 </button>
               </>
             )}
@@ -295,7 +297,7 @@ export default function Home() {
 
   if (auth.userType === "user") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900" suppressHydrationWarning>
         <header className="bg-white dark:bg-gray-800 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -307,13 +309,13 @@ export default function Home() {
                 onClick={() => (window.location.href = "/messaggi")}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               >
-                Messaggi
+                {t("home.messages")}
               </button>
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
               >
-                Logout
+                {t("common.logout")}
               </button>
             </div>
           </div>
@@ -346,7 +348,7 @@ export default function Home() {
 
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Posizione</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.location")}</h2>
               <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3083.1234!2d18.1714!3d40.3515!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1344108b8c7c7c7c7%3A0x1234567890abcdef!2zTGVjY2UsIEl0YWxpYQ!5e0!3m2!1sit!2sit!4v1234567890!5m2!1sit!2sit"
                 width="100%"
@@ -363,19 +365,19 @@ export default function Home() {
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Azioni</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.actions")}</h2>
               <div className="space-y-4">
                 <button
                   onClick={() => window.location.href = '/servizi'}
                   className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
-                  I Nostri Servizi
+                  {t("home.services")}
                 </button>
                 <button
                   onClick={() => window.location.href = '/pernottare'}
                   className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
                 >
-                  Prenotta il tuo Soggiorno
+                  {t("home.booking")}
                 </button>
               </div>
             </div>
@@ -387,25 +389,25 @@ export default function Home() {
 
   if (auth.userType === "admin") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:bg-gray-900">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:bg-gray-900" suppressHydrationWarning>
         <header className="bg-white dark:bg-gray-800 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <img src="/logopng.png" alt="Casa Vacanza" className="h-10 w-10" />
-              <h1 className="text-2xl font-bold text-green-600 dark:text-green-400">Casa Vacanza - Admin</h1>
+              <h1 className="text-2xl font-bold text-green-600 dark:text-green-400">{t("home.adminPanel")}</h1>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => (window.location.href = "/messaggi")}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               >
-                Messaggi
+                {t("home.messages")}
               </button>
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
               >
-                Logout
+                {t("common.logout")}
               </button>
             </div>
           </div>
@@ -413,10 +415,10 @@ export default function Home() {
 
         <main className="max-w-7xl mx-auto px-4 py-8">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Carica Foto della Casa</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.uploadPhotos")}</h2>
             <input
               type="text"
-              placeholder="URL immagine"
+              placeholder={t("home.imageUrl")}
               value={newPhoto}
               onChange={(e) => setNewPhoto(e.target.value)}
               className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -425,27 +427,27 @@ export default function Home() {
               onClick={handleAddPhoto}
               className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
             >
-              Aggiungi Foto
+              {t("home.addPhoto")}
             </button>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Gestione Servizi</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.serviceManagement")}</h2>
               <button
                 onClick={() => window.location.href = '/servizi'}
                 className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
-                Vai ai Servizi
+                {t("home.goToServices")}
               </button>
             </div>
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Prenotazioni</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.bookingManagement")}</h2>
               <button
                 onClick={() => window.location.href = '/prenotazioni'}
                 className="w-full py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
               >
-                Visualizza Prenotazioni
+                {t("home.viewBookings")}
               </button>
             </div>
           </div>
