@@ -192,7 +192,7 @@ export default function MessaggiPage() {
                   value={phoneInput}
                   onChange={(e) => setPhoneInput(e.target.value)}
                   placeholder="Es. +39 333 1234567"
-                  className="flex-1 p-3 border border-gray-300 rounded-lg"
+                  className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 <button
                   onClick={handleSavePhone}
@@ -215,7 +215,7 @@ export default function MessaggiPage() {
                 <select
                   value={selectedUserEmail}
                   onChange={(e) => setSelectedUserEmail(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg bg-white dark:bg-gray-800"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   {users.map((user) => (
                     <option key={user.id} value={user.email}>
@@ -280,7 +280,7 @@ export default function MessaggiPage() {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder={t("messaggi.messagePlaceholder")}
-            className="flex-1 p-3 border border-gray-300 rounded-lg"
+            className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
           />
           <button
             onClick={handleSend}

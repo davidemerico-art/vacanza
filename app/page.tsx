@@ -5,7 +5,7 @@ import { useTranslation } from "@/lib/useTranslation";
 
 type UserType = "user" | "admin" | null;
 type AuthState = { loggedIn: boolean; userType: UserType };
-type PhotoItem = { url: string };
+type PhotoItem = { id: number; url: string };
 
 type Mode = "select" | "user-login" | "user-register" | "admin-login";
 
@@ -16,15 +16,19 @@ export default function Home() {
   const [adminCode, setAdminCode] = useState("");
   const [auth, setAuth] = useState<AuthState>({ loggedIn: false, userType: null });
   const [authResolved, setAuthResolved] = useState(false);
-  const [photos, setPhotos] = useState<string[]>(["https://via.placeholder.com/800x400?text=Casa+Vacanza+1"]);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [newPhoto, setNewPhoto] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [bnbDescription, setBnbDescription] = useState("");
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   const nextPhoto = () => {
+    if (photos.length === 0) return;
     setCurrentPhotoIndex((prev) => (prev + 1) % photos.length);
   };
 
   const prevPhoto = () => {
+    if (photos.length === 0) return;
     setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
   };
 
@@ -33,12 +37,23 @@ export default function Home() {
       const res = await fetch("/api/photos");
       if (!res.ok) return;
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        setPhotos(data.map((item: PhotoItem) => item.url));
+      if (Array.isArray(data)) {
+        setPhotos(data as PhotoItem[]);
         setCurrentPhotoIndex(0);
       }
     } catch (error) {
       console.error("Errore caricamento foto:", error);
+    }
+  };
+
+  const fetchBnbDescription = async () => {
+    try {
+      const res = await fetch("/api/settings/bnb-description");
+      if (!res.ok) return;
+      const data = await res.json();
+      setBnbDescription(data.description || "");
+    } catch (error) {
+      console.error("Errore caricamento descrizione:", error);
     }
   };
 
@@ -52,8 +67,8 @@ export default function Home() {
 
   useEffect(() => {
     if (auth.loggedIn) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchPhotos();
+      fetchBnbDescription();
     }
   }, [auth.loggedIn]);
 
@@ -113,29 +128,74 @@ export default function Home() {
     if (adminCode === "veloda" || adminCode === "foresta") {
       saveLogin("admin", "", "Admin");
       fetchPhotos();
+      fetchBnbDescription();
     } else {
       alert(t("home.errorAdminCode"));
     }
   };
 
   const handleAddPhoto = async () => {
-    if (!newPhoto.trim()) {
+    if (!newPhoto.trim() && !photoFile) {
       alert(t("home.errorPhotoUrl"));
       return;
     }
 
-    const response = await fetch("/api/photos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: newPhoto }),
-    });
+    let response: Response;
+    if (photoFile) {
+      const formData = new FormData();
+      formData.append("file", photoFile);
+      if (newPhoto.trim()) {
+        formData.append("url", newPhoto.trim());
+      }
+
+      response = await fetch("/api/photos", {
+        method: "POST",
+        body: formData,
+      });
+    } else {
+      response = await fetch("/api/photos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: newPhoto.trim() }),
+      });
+    }
+
     const result = await response.json();
 
     if (response.ok) {
       setNewPhoto("");
+      setPhotoFile(null);
       fetchPhotos();
     } else {
       alert(result.message || t("home.errorSavePhoto"));
+    }
+  };
+
+  const handleDeletePhoto = async (id: number) => {
+    if (!confirm(t("home.deleteConfirm") || "Sei sicuro di voler eliminare questa foto?")) {
+      return;
+    }
+
+    const response = await fetch(`/api/photos/${id}`, { method: "DELETE" });
+    if (response.ok) {
+      fetchPhotos();
+    } else {
+      alert(t("home.errorSavePhoto"));
+    }
+  };
+
+  const handleSaveDescription = async () => {
+    const response = await fetch("/api/settings/bnb-description", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description: bnbDescription }),
+    });
+
+    if (response.ok) {
+      alert(t("home.saveDescription") || "Descrizione salvata!");
+      fetchBnbDescription(); // Ricarica la descrizione per confermare il salvataggio
+    } else {
+      alert(t("home.errorSavePhoto"));
     }
   };
 
@@ -295,12 +355,16 @@ export default function Home() {
     );
   }
 
+  const displayedPhoto = photos.length > 0
+    ? photos[currentPhotoIndex]
+    : { id: 0, url: "https://via.placeholder.com/800x400?text=Casa+Vacanza+1" };
+
   if (auth.userType === "user") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:bg-gray-900" suppressHydrationWarning>
         <header className="bg-white dark:bg-gray-800 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 cursor-pointer" onClick={() => (window.location.href = "/")}>
               <img src="/logopng.png" alt="Casa Vacanza" className="h-10 w-10" />
               <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400">Casa Vacanza</h1>
             </div>
@@ -322,29 +386,56 @@ export default function Home() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 py-8">
-          <div className="relative w-full h-96 overflow-hidden rounded-xl shadow-2xl mb-8 bg-gray-200">
-            <img src={photos[currentPhotoIndex]} alt={`Casa ${currentPhotoIndex + 1}`} className="w-full h-full object-cover" />
+          <div className="relative w-full bg-gradient-to-b from-gray-900 to-gray-800 rounded-2xl shadow-2xl mb-12 overflow-hidden" style={{ aspectRatio: '16/9' }}>
+              <img src={displayedPhoto.url} alt={`Casa ${currentPhotoIndex + 1}`} className="w-full h-full object-contain" loading="eager" decoding="async" />
+            {/* Freccia sinistra */}
             <button
               onClick={prevPhoto}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 text-gray-800 px-3 py-2 rounded-full hover:bg-opacity-100 transition-all shadow-lg"
+              className="absolute left-6 top-1/2 transform -translate-y-1/2 bg-white hover:bg-blue-600 text-gray-900 hover:text-white px-4 py-3 rounded-full hover:scale-110 transition-all shadow-lg text-2xl font-bold z-10"
+              aria-label="Foto precedente"
             >
               ‹
             </button>
+            
+            {/* Freccia destra */}
             <button
               onClick={nextPhoto}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 text-gray-800 px-3 py-2 rounded-full hover:bg-opacity-100 transition-all shadow-lg"
+              className="absolute right-6 top-1/2 transform -translate-y-1/2 bg-white hover:bg-blue-600 text-gray-900 hover:text-white px-4 py-3 rounded-full hover:scale-110 transition-all shadow-lg text-2xl font-bold z-10"
+              aria-label="Foto successiva"
             >
               ›
             </button>
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+
+            {/* Numero foto */}
+            <div className="absolute top-6 right-6 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-sm">
+              {photos.length > 0 ? `${currentPhotoIndex + 1} / ${photos.length}` : "0 / 0"}
+            </div>
+
+            {/* Dot indicators clicabili */}
+            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-3 bg-black bg-opacity-50 px-4 py-3 rounded-full backdrop-blur-sm">
               {photos.map((_, index) => (
-                <div
+                <button
                   key={index}
-                  className={`w-3 h-3 rounded-full ${index === currentPhotoIndex ? "bg-white" : "bg-white bg-opacity-50"}`}
-                ></div>
+                  onClick={() => setCurrentPhotoIndex(index)}
+                  className={`transition-all cursor-pointer ${
+                    index === currentPhotoIndex
+                      ? "bg-white w-8 h-3 rounded-full"
+                      : "bg-white bg-opacity-40 hover:bg-opacity-70 w-3 h-3 rounded-full"
+                  }`}
+                  aria-label={`Vai a foto ${index + 1}`}
+                ></button>
               ))}
             </div>
           </div>
+
+          {bnbDescription && (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
+              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.bnbDescription")}</h2>
+              <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {bnbDescription}
+              </div>
+            </div>
+          )}
 
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
@@ -392,7 +483,7 @@ export default function Home() {
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:bg-gray-900" suppressHydrationWarning>
         <header className="bg-white dark:bg-gray-800 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 cursor-pointer" onClick={() => (window.location.href = "/")}>
               <img src="/logopng.png" alt="Casa Vacanza" className="h-10 w-10" />
               <h1 className="text-2xl font-bold text-green-600 dark:text-green-400">{t("home.adminPanel")}</h1>
             </div>
@@ -416,18 +507,73 @@ export default function Home() {
         <main className="max-w-7xl mx-auto px-4 py-8">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
             <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.uploadPhotos")}</h2>
-            <input
-              type="text"
-              placeholder={t("home.imageUrl")}
-              value={newPhoto}
-              onChange={(e) => setNewPhoto(e.target.value)}
-              className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <input
+                  type="text"
+                  placeholder={t("home.imageUrl")}
+                  value={newPhoto}
+                  onChange={(e) => setNewPhoto(e.target.value)}
+                  className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  {t("home.photoFile")}
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm text-gray-700 dark:text-gray-200"
+                />
+                {photoFile && (
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{photoFile.name}</p>
+                )}
+              </div>
+            </div>
             <button
               onClick={handleAddPhoto}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+              className="mt-4 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
             >
               {t("home.addPhoto")}
+            </button>
+            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">{t("home.imageUrl")} o {t("home.photoFile")}.</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.currentPhotos")}</h2>
+            {photos.length === 0 ? (
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t("home.noPhotos")}</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                {photos.map((photo) => (
+                  <div key={photo.id} className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <img src={photo.url} alt={`Foto ${photo.id}`} className="w-full h-32 object-cover" />
+                    <button
+                      onClick={() => handleDeletePhoto(photo.id)}
+                      className="w-full py-2 bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors"
+                    >
+                      {t("common.delete")}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.bnbDescription")}</h2>
+            <textarea
+              value={bnbDescription}
+              onChange={(e) => setBnbDescription(e.target.value)}
+              placeholder={t("home.bnbDescriptionPlaceholder")}
+              rows={6}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-vertical"
+            />
+            <button
+              onClick={handleSaveDescription}
+              className="mt-4 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+            >
+              {t("home.saveDescription")}
             </button>
           </div>
 
