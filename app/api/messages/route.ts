@@ -14,7 +14,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { senderType, senderName, content, userEmail } = await req.json();
+  const { senderType, senderName, content, contentEn, userEmail } = await req.json();
 
   if (!senderType || !senderName || !content?.trim() || !userEmail) {
     return NextResponse.json({ success: false, message: "Messaggio non valido." }, { status: 400 });
@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       senderName,
       userEmail,
       content: content.trim(),
+      contentEn: contentEn?.trim() || "",
     },
   });
 

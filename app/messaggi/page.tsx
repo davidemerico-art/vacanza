@@ -9,6 +9,7 @@ type Message = {
   senderName: string;
   userEmail: string | null;
   content: string;
+  contentEn: string;
   createdAt: string;
 };
 
@@ -19,7 +20,7 @@ type UserItem = {
 };
 
 export default function MessaggiPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const userType = useSyncExternalStore(
     () => () => {},
     () => {
@@ -260,7 +261,9 @@ export default function MessaggiPage() {
                   <p className="font-semibold text-gray-800 dark:text-gray-100">
                     {message.senderName} ({message.senderType})
                   </p>
-                  <p className="text-gray-700 dark:text-gray-200">{message.content}</p>
+                  <p className="text-gray-700 dark:text-gray-200">
+                    {locale === "en" ? (message.contentEn || message.content) : message.content}
+                  </p>
                 </div>
                 <button
                   onClick={() => handleDeleteMessage(message.id)}

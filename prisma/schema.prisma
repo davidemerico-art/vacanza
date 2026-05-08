@@ -32,6 +32,8 @@ model Servizio {
   id          Int     @id @default(autoincrement())
   nome        String
   descrizione String
+  nomeEn      String  @default("")
+  descrizioneEn String @default("")
   immagine    String
   incluso     Boolean @default(true)
 
@@ -59,6 +61,7 @@ model Message {
   senderName String
   userEmail  String?
   content    String
+  contentEn  String   @default("")
   createdAt  DateTime @default(now())
 
   @@map("messages")

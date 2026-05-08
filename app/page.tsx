@@ -10,16 +10,18 @@ type PhotoItem = { id: number; url: string };
 type Mode = "select" | "user-login" | "user-register" | "admin-login";
 
 export default function Home() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [mode, setMode] = useState<Mode>("select");
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "" });
   const [adminCode, setAdminCode] = useState("");
+  const [adminCode2, setAdminCode2] = useState("");
   const [auth, setAuth] = useState<AuthState>({ loggedIn: false, userType: null });
   const [authResolved, setAuthResolved] = useState(false);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [newPhoto, setNewPhoto] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [bnbDescription, setBnbDescription] = useState("");
+  const [bnbDescriptionEn, setBnbDescriptionEn] = useState("");
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   const nextPhoto = () => {
@@ -52,6 +54,7 @@ export default function Home() {
       if (!res.ok) return;
       const data = await res.json();
       setBnbDescription(data.description || "");
+      setBnbDescriptionEn(data.descriptionEn || "");
     } catch (error) {
       console.error("Errore caricamento descrizione:", error);
     }
@@ -125,8 +128,13 @@ export default function Home() {
   };
 
   const handleAdminLogin = () => {
-    if (adminCode === "veloda" || adminCode === "foresta") {
+    const codes = [adminCode, adminCode2].sort();
+    const validCodes = ["foresta", "veloda"].sort();
+    
+    if (codes[0] === validCodes[0] && codes[1] === validCodes[1]) {
       saveLogin("admin", "", "Admin");
+      setAdminCode("");
+      setAdminCode2("");
       fetchPhotos();
       fetchBnbDescription();
     } else {
@@ -188,12 +196,12 @@ export default function Home() {
     const response = await fetch("/api/settings/bnb-description", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description: bnbDescription }),
+      body: JSON.stringify({ description: bnbDescription, descriptionEn: bnbDescriptionEn }),
     });
 
     if (response.ok) {
       alert(t("home.saveDescription") || "Descrizione salvata!");
-      fetchBnbDescription(); // Ricarica la descrizione per confermare il salvataggio
+      fetchBnbDescription();
     } else {
       alert(t("home.errorSavePhoto"));
     }
@@ -237,12 +245,6 @@ export default function Home() {
                     className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                   >
                     {t("home.userOption")}
-                  </button>
-                  <button
-                    onClick={() => setMode("admin-login")}
-                    className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                  >
-                    {t("home.adminOption")}
                   </button>
                 </div>
               </>
@@ -328,11 +330,19 @@ export default function Home() {
             {mode === "admin-login" && (
               <>
                 <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.adminLoginTitle")}</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{t("home.adminLoginDescription")}</p>
                 <input
                   type="text"
-                  placeholder={t("home.adminCode")}
+                  placeholder={t("home.adminCode1")}
                   value={adminCode}
                   onChange={(e) => setAdminCode(e.target.value)}
+                  className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  placeholder={t("home.adminCode2")}
+                  value={adminCode2}
+                  onChange={(e) => setAdminCode2(e.target.value)}
                   className="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
                 <button
@@ -350,6 +360,17 @@ export default function Home() {
               </>
             )}
           </div>
+          
+          {mode === "select" && (
+            <div className="mt-12 pt-8 border-t border-gray-300 dark:border-gray-700 w-full text-center">
+              <button
+                onClick={() => setMode("admin-login")}
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              >
+                {t("home.adminArea")}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -428,11 +449,11 @@ export default function Home() {
             </div>
           </div>
 
-          {bnbDescription && (
+          {(bnbDescription || bnbDescriptionEn) && (
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
               <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.bnbDescription")}</h2>
               <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                {bnbDescription}
+                {locale === "en" ? (bnbDescriptionEn || bnbDescription) : (bnbDescription || bnbDescriptionEn)}
               </div>
             </div>
           )}
@@ -562,13 +583,32 @@ export default function Home() {
           </div>
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
             <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">{t("home.bnbDescription")}</h2>
-            <textarea
-              value={bnbDescription}
-              onChange={(e) => setBnbDescription(e.target.value)}
-              placeholder={t("home.bnbDescriptionPlaceholder")}
-              rows={6}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-vertical"
-            />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  Italiano
+                </label>
+                <textarea
+                  value={bnbDescription}
+                  onChange={(e) => setBnbDescription(e.target.value)}
+                  placeholder={t("home.bnbDescriptionPlaceholder")}
+                  rows={6}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-vertical"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  English
+                </label>
+                <textarea
+                  value={bnbDescriptionEn}
+                  onChange={(e) => setBnbDescriptionEn(e.target.value)}
+                  placeholder={t("home.bnbDescriptionPlaceholder")}
+                  rows={6}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-vertical"
+                />
+              </div>
+            </div>
             <button
               onClick={handleSaveDescription}
               className="mt-4 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
