@@ -7,7 +7,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { nome, descrizione, immagine, incluso } = await req.json();
+  const { nome, descrizione, nomeEn, descrizioneEn, immagine, incluso } = await req.json();
 
   if (!nome || !descrizione || !immagine) {
     return NextResponse.json({ success: false, message: "Compila tutti i campi." }, { status: 400 });
@@ -17,6 +17,8 @@ export async function POST(req: Request) {
     data: {
       nome,
       descrizione,
+      nomeEn: nomeEn || "",
+      descrizioneEn: descrizioneEn || "",
       immagine,
       incluso: !!incluso,
     },
